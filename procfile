@@ -1,0 +1,9 @@
+# Procfile for deployment platforms like Heroku
+
+# This line tells the platform how to run the 'web' process.
+# It should be scaled to handle incoming HTTP traffic.
+web: node server.js
+
+# This line tells the platform how to run the 'worker' process.
+# You would typically only run one instance of this.
+worker: node worker.js

@@ -2,10 +2,11 @@
 // Extracts message type, content, sender info, etc. from WhatsApp webhook payload
 
 function parseMessage(message, value) {
-    let messageContent = '';
+    const senderWaId = message.from;
+    const senderName = value.contacts && value.contacts[0] ? value.contacts[0].profile.name : 'Unknown User';
     let messageType = message.type;
-    let senderName = value.contacts && value.contacts[0] ? value.contacts[0].profile.name : 'Unknown User';
-    let extra = {};
+    let messageContent = '';
+    let extra = {}; // For additional data like coordinates
 
     switch (messageType) {
         case 'text':
@@ -17,6 +18,7 @@ function parseMessage(message, value) {
             break;
         case 'video':
             messageContent = message.video.id;
+            extra.caption = message.video.caption || '';
             break;
         case 'audio':
             messageContent = message.audio.id;
@@ -30,32 +32,36 @@ function parseMessage(message, value) {
             break;
         case 'location':
             messageContent = `Latitude: ${message.location.latitude}, Longitude: ${message.location.longitude}`;
+            extra.latitude = message.location.latitude;
+            extra.longitude = message.location.longitude;
+            extra.name = message.location.name || ''; // Optional: name of the location
+            extra.address = message.location.address || ''; // Optional: address of the location
             break;
         case 'contacts':
-            const contactsInfo = message.contacts.map(contact => ({
-                name: contact.name.formatted_name,
-                phone: contact.phones[0].wa_id
-            }));
-            messageContent = `Shared Contacts: ${JSON.stringify(contactsInfo)}`;
+            messageContent = 'Shared contact(s)';
+            extra.contacts = message.contacts; // Array of contact objects
             break;
         case 'interactive':
             if (message.interactive.type === 'button_reply') {
+                messageType = 'button_reply'; // Refine type for easier handling
                 messageContent = message.interactive.button_reply.title;
                 extra.buttonId = message.interactive.button_reply.id;
             } else if (message.interactive.type === 'list_reply') {
+                messageType = 'list_reply'; // Refine type
                 messageContent = message.interactive.list_reply.title;
                 extra.listRowId = message.interactive.list_reply.id;
             }
             break;
         case 'reaction':
             messageContent = message.reaction.emoji;
-            extra.reactionMessageId = message.reaction.wa_id;
+            extra.reactedToMessageId = message.reaction.wa_id;
             break;
         default:
             messageContent = `Unsupported message type: ${messageType}`;
             break;
     }
-    return { messageType, messageContent, senderName, extra };
+
+    return { senderWaId, messageType, messageContent, senderName, extra };
 }
 
 module.exports = { parseMessage };

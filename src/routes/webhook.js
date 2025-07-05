@@ -1,11 +1,14 @@
 const { handleIncomingMessage, handleMessageStatus } = require('../utils/whatsappHandlers');
 const { getIntentAndAgent } = require('../utils/geminiRouter');
 const { parseMessage } = require('../utils/messageParser');
+const { sendTextMessage } = require('../utils/whatsappApi');
 
 const { handleRestaurantBooking } = require('../agents/restaurantBookingAgent');
 const { handleWeather } = require('../agents/weatherAgent');
 const { handleGeneralChat } = require('../agents/generalChatAgent');
 const { handleCustomerSupport } = require('../agents/customerSupportAgent');
+const { handleComprehensiveLocationInfo } = require('../agents/comprehensiveLocationAgent');
+const { handleReminder } = require('../agents/reminderAgent');
 
 // Webhook verification handler
 function handleWebhookVerification(req, res, VERIFY_TOKEN) {
@@ -26,78 +29,95 @@ function handleWebhookVerification(req, res, VERIFY_TOKEN) {
 }
 
 // Webhook event handler
-function handleWebhookEvent(req, res) {
+async function handleWebhookEvent(req, res) {
     const body = req.body;
     console.log(`\nWebhook Received:`);
     console.log(JSON.stringify(body, null, 2));
 
     if (body.object === 'whatsapp_business_account') {
-        body.entry.forEach(entry => {
+        for (const entry of body.entry) {
             // Iterate over each change within an entry
-            entry.changes.forEach(change => {
-                // Ensure the change is a 'message' event
+            for (const change of entry.changes) {
+                // Ensure the change is a 'messages' event (covers incoming messages and status updates)
                 if (change.field === 'messages') {
-                    let value = change.value;
+                    const value = change.value;
 
-                    // Check if there are messages in the 'value' object
+                    // Check if there are actual incoming messages (from user)
                     if (value.messages) {
-                        value.messages.forEach(async message => {
-                            // --- This is where the core message processing begins ---
-                            console.log('Incoming WhatsApp Message Payload:', JSON.stringify(message, null, 2));
-                            // Parse message and sender info
-                            const senderWaId = message.from;
-                            const messageId = message.id;
-                            const timestamp = message.timestamp;
-                            const { messageType, messageContent, senderName, extra } = parseMessage(message, value);
+                        // Process each message individually
+                        // Use for...of for proper async/await handling in loops
+                        for (const message of value.messages) {
+                            // Parse message details using the helper function
+                            const { senderWaId, messageType, messageContent, senderName, extra } = parseMessage(message, value);
                             console.log(`[${messageType}] From: ${senderName} (${senderWaId}), Content: "${messageContent}"`, extra);
 
-                            // Intent recognition and agent routing
                             try {
-                                const intentRecognitionResult = await getIntentAndAgent(messageContent);
-                                const { intent, agent } = intentRecognitionResult;
-                                console.log(`Identified Intent: ${intent}`);
-                                console.log(`Suggested Agent: ${agent}`);
-                                // --- Here you would implement the actual routing logic ---
-                                switch (agent) {
+                                if (messageType === 'text' || messageType === 'button_reply' || messageType === 'list_reply') {
+                                    // For text and interactive replies, use Gemini for intent recognition and agent routing
+                                    const intentRecognitionResult = await getIntentAndAgent(messageContent);
+                                    const { intent, agent } = intentRecognitionResult;
+                                    
+                                    console.log(`Identified Intent: ${intent}`);
+                                    console.log(`Suggested Agent: ${agent}`);
+
+                                    // --- Agent Routing Logic for TEXT/INTERACTIVE messages ---
+                                    switch (agent) {
                                         case 'RestaurantBookingAgent':
                                             await handleRestaurantBooking(senderWaId, messageContent);
                                             break;
-                                        case 'WeatherAgent':
+                                        case 'WeatherAgent': // Handles text-based weather queries
                                             await handleWeather(senderWaId, messageContent);
                                             break;
-                                        case 'OrderTrackingAgent': // Placeholder for this agent
-                                            await sendTextMessage(senderWaId, "You asked about order tracking! This agent is still under development. Please check back later.");
-                                            // In a real scenario, you'd call a function like `handleOrderTracking(senderWaId, messageContent);`
+                                        case 'ComprehensiveLocationAgent': // Handles text-based broad local info, will prompt for location
+                                            await handleComprehensiveLocationInfo(senderWaId, messageContent);
                                             break;
-                                        case 'ReminderAgent': // Placeholder for this agent
-                                            await sendTextMessage(senderWaId, "You want to set a reminder! This agent is still under development. Please check back later.");
-                                            // In a real scenario, you'd call a function like `handleReminder(senderWaId, messageContent);`
+                                        case 'OrderTrackingAgent':
+                                            // Placeholder for this agent
+                                            await sendTextMessage(senderWaId, "You asked about order tracking! This agent is still under development. Please check back later.");
+                                            break;
+                                        case 'ReminderAgent':
+                                            await handleReminder(senderWaId, messageContent);
                                             break;
                                         case 'CustomerSupportAgent':
                                             await handleCustomerSupport(senderWaId, messageContent);
                                             break;
                                         case 'GeneralChatAgent':
-                                        default: // Fallback to general chat if agent name is unrecognized
+                                        default: // Fallback to general chat if agent name is unrecognized or API error
                                             await handleGeneralChat(senderWaId, messageContent);
                                             break;
                                     }
+
+                                } else if (messageType === 'location') {
+                                    // *** Direct Routing for Shared Location Messages (ALWAYS to ComprehensiveLocationAgent) ***
+                                    const latitude = extra.latitude; // From parseMessage's 'extra'
+                                    const longitude = extra.longitude; // From parseMessage's 'extra'
+                                    
+                                    // Pass null for messageContent as the primary input is coordinates
+                                    await handleComprehensiveLocationInfo(senderWaId, null, latitude, longitude); 
+                                    
+                                } else {
+                                    // Handle other unsupported message types (image, video, document, sticker, contacts, reaction, etc.)
+                                    console.log(`[Unsupported Message Type] From: ${senderName} (${senderWaId}), Type: ${messageType}`);
+                                    await sendTextMessage(senderWaId, "I'm sorry, I can only process text messages and shared locations at the moment. Please describe your request in text or share your location.");
+                                }
                             } catch (error) {
-                                console.error('Error in intent recognition:', error);
-                                console.log(`Fallback: Routing to GeneralChatAgent for message: "${messageContent}"`);
+                                console.error('Error in message processing or agent routing:', error);
+                                // Fallback to general chat or customer support in case of an unhandled error
+                                await sendTextMessage(senderWaId, "I apologize, an unexpected error occurred while trying to understand your request. Our team has been notified. Please try again or contact our support directly.");
                             }
-                        });
+                        }
                     } else if (value.statuses) {
                         // Handle message status updates (sent, delivered, read, failed)
                         // These are typically for messages *your business* sent to users
-                        value.statuses.forEach(status => {
+                        for (const status of value.statuses) { // Use for...of for proper async/await handling
                             console.log('Message Status Update:', status);
                             // You can use this to update the delivery status of your outbound messages
                             // in your database or CRM.
-                        });
+                        }
                     }
                 }
-            });
-        });
+            }
+        }
         return res.sendStatus(200); // Always respond with 200 OK
     } else {
         // Not a WhatsApp webhook event

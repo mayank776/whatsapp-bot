@@ -1,29 +1,53 @@
-// Imports and Configuration
+// index.js
+
+// --- Imports and Configuration ---
+require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
-const bodyParser = require('body-parser');
+const { pool } = require('./utils/db'); // Import the pool for graceful shutdown and queries
+
 const app = express();
 const port = process.env.PORT || 3000;
-require('dotenv').config();
+const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 
-// Your verify token. This can be any arbitrary string.
-const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN; // IMPORTANT: Change this!
+// --- Middleware ---
+// Use express.json() for parsing JSON bodies. It's the modern replacement for bodyParser.json().
+app.use(express.json());
 
-// Middleware
-app.use(bodyParser.json()); // To parse JSON bodies
+// --- Routes ---
 
-// =========================
-// Routes
-// =========================
-
+// Import route handlers. In a real app, these handlers would use the async db functions.
+// For example, handleWebhookEvent might call db.addReminder().
 const { handleWebhookVerification, handleWebhookEvent } = require('./routes/webhook');
 
+// Webhook routes provided by the user
 app.get('/webhook', (req, res) => handleWebhookVerification(req, res, VERIFY_TOKEN));
 app.post('/webhook', handleWebhookEvent);
 
-// =========================
-// Server Start
-// =========================
-
-app.listen(port, () => {
-    console.log(`Webhook server listening on port ${port}`);
+// A simple health check endpoint
+app.get('/', (req, res) => {
+    res.status(200).send('Webhook server is running and ready.');
 });
+
+
+// --- Server Start ---
+app.listen(port, () => {
+    console.log(`[Web Server] Listening for requests on port ${port}`);
+    // The scheduler is correctly managed by the separate worker.js process.
+});
+
+// --- Graceful Shutdown ---
+// This is crucial for ensuring database connections are closed properly when the server stops.
+async function shutdown() {
+    console.log('[Web Server] Shutting down gracefully...');
+    try {
+        await pool.end(); // Close the database connection pool
+        console.log('[Web Server] Database pool closed.');
+        process.exit(0);
+    } catch (error) {
+        console.error('[Web Server] Error during shutdown:', error);
+        process.exit(1);
+    }
+}
+
+process.on('SIGTERM', shutdown); // For platforms like Heroku, Render
+process.on('SIGINT', shutdown);  // For local development (Ctrl+C)
