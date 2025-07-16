@@ -5,35 +5,30 @@
 
 const { initializeScheduler } = require('./utils/scheduler');
 const { pool, initializeDbSchema } = require('./utils/db');
+const logger = require('./utils/logger');
 
-console.log('[Worker] Starting worker process...');
+logger.info('[Worker] Starting worker process...');
 
-// It's a good practice to run schema initialization from the worker
-// on startup, though in production you might use a separate migration script.
 initializeDbSchema()
+    .then(() => initializeScheduler())
     .then(() => {
-        // Now that the DB is confirmed to be ready, start the scheduler.
-        return initializeScheduler();
-    })
-    .then(() => {
-        console.log('[Worker] Worker has started and scheduler is running.');
+        logger.info('[Worker] Worker has started and scheduler is running.');
     })
     .catch(error => {
-        console.error('[Worker] Failed to start worker:', error);
+        logger.error('[Worker] Failed to start worker:', error);
         process.exit(1);
     });
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
-    console.log('[Worker] SIGTERM signal received. Shutting down gracefully.');
-    await pool.end(); // Close the database connection pool
-    console.log('[Worker] Database pool closed. Exiting.');
+    logger.info('[Worker] SIGTERM signal received. Shutting down gracefully.');
+    await pool.end();
+    logger.info('[Worker] Database pool closed. Exiting.');
     process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-    console.log('[Worker] SIGINT signal received. Shutting down gracefully.');
+    logger.info('[Worker] SIGINT signal received. Shutting down gracefully.');
     await pool.end();
-    console.log('[Worker] Database pool closed. Exiting.');
+    logger.info('[Worker] Database pool closed. Exiting.');
     process.exit(0);
 });

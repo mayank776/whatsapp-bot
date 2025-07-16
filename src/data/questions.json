@@ -1,0 +1,22 @@
+[
+  { "id": 1, "question": "When making plans, do you prefer a detailed itinerary or going with the flow?", "options": { "A": "Detailed itinerary", "B": "Going with the flow" } },
+  { "id": 2, "question": "At a social gathering, are you more likely to talk to many people or have a deep conversation with a few?", "options": { "A": "Talk to many people", "B": "Deep conversation with a few" } },
+  { "id": 3, "question": "When facing a problem, do you trust your logical reasoning or your gut intuition?", "options": { "A": "Logical reasoning", "B": "Gut intuition" } },
+  { "id": 4, "question": "How do you react to sudden changes in plans?", "options": { "A": "Feel stressed and annoyed", "B": "Adapt easily and welcome the change" } },
+  { "id": 5, "question": "Would you rather work on a team project or an individual assignment?", "options": { "A": "Team project", "B": "Individual assignment" } },
+  { "id": 6, "question": "Is your workspace typically tidy and organized or more cluttered and chaotic?", "options": { "A": "Tidy and organized", "B": "Cluttered and chaotic" } },
+  { "id": 7, "question": "How do you feel about trying exotic and unfamiliar foods?", "options": { "A": "Excited to try something new", "B": "Prefer familiar and safe options" } },
+  { "id": 8, "question": "When a friend is upset, are you more likely to offer practical solutions or emotional support?", "options": { "A": "Practical solutions", "B": "Emotional support" } },
+  { "id": 9, "question": "Do you find it easy to stay calm under pressure?", "options": { "A": "Yes, I remain calm and focused", "B": "No, I get easily flustered" } },
+  { "id": 10, "question": "Which sounds more appealing: a weekend relaxing at home or a weekend exploring a new city?", "options": { "A": "Relaxing at home", "B": "Exploring a new city" } },
+  { "id": 11, "question": "When finishing a task, is it more important to be perfect or to be done on time?", "options": { "A": "Be perfect", "B": "Be done on time" } },
+  { "id": 12, "question": "Are you more energized by spending time alone or with a large group of friends?", "options": { "A": "Time alone", "B": "Large group of friends" } },
+  { "id": 13, "question": "Do you enjoy debates and discussions where opinions differ?", "options": { "A": "Yes, I find them stimulating", "B": "No, I prefer to avoid conflict" } },
+  { "id": 14, "question": "How do you feel about abstract art and philosophical ideas?", "options": { "A": "Find them intriguing and thought-provoking", "B": "Find them impractical and uninteresting" } },
+  { "id": 15, "question": "Do you often worry about what might go wrong in the future?", "options": { "A": "Yes, I'm a natural worrier", "B": "No, I tend to be optimistic" } },
+  { "id": 16, "question": "Are you more likely to follow rules or question them?", "options": { "A": "Follow rules", "B": "Question them" } },
+  { "id": 17, "question": "Would you describe yourself as a good listener or a good talker?", "options": { "A": "A good listener", "B": "A good talker" } },
+  { "id": 18, "question": "When learning a new skill, do you prefer following a structured tutorial or experimenting on your own?", "options": { "A": "Structured tutorial", "B": "Experimenting on my own" } },
+  { "id": 19, "question": "Do you easily forgive others, or do you tend to hold grudges?", "options": { "A": "Easily forgive", "B": "Hold grudges" } },
+  { "id": 20, "question": "Do your moods change frequently, or are they generally stable?", "options": { "A": "Change frequently", "B": "Generally stable" } }
+]

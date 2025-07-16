@@ -1,8 +1,9 @@
-// agents/customerSupportAgent.js
+
 const { sendTextMessage, sendTemplateMessage } = require('../utils/whatsappApi');
+const logger = require('../utils/logger');
 
 async function handleCustomerSupport(senderWaId, messageContent) {
-    console.log(`[CustomerSupportAgent] Routing to human support for ${senderWaId}: "${messageContent}"`);
+    logger.info(`[CustomerSupportAgent] Routing to human support for ${senderWaId}: "${messageContent}"`);
 
     // In a real system, you would:
     // 1. Log the conversation and user details to a CRM or ticketing system.
@@ -21,10 +22,10 @@ async function handleCustomerSupport(senderWaId, messageContent) {
     */
 
     // Simulate sending an internal notification
-    console.log(`--- INTERNAL NOTIFICATION ---`);
-    console.log(`New support request from ${senderWaId}: "${messageContent}"`);
-    console.log(`Please assign to a human agent.`);
-    console.log(`-----------------------------`);
+    logger.info(`--- INTERNAL NOTIFICATION ---`);
+    logger.info(`New support request from ${senderWaId}: "${messageContent}"`);
+    logger.info(`Please assign to a human agent.`);
+    logger.info(`-----------------------------`);
 }
 
 module.exports = {

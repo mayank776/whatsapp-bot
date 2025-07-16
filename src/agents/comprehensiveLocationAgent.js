@@ -1,20 +1,20 @@
-// agents/comprehensiveLocationAgent.js
-const { sendTextMessage } = require('../utils/whatsappApi'); // Ensure path is correct
+
+const { sendTextMessage } = require('../utils/whatsappApi');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Or gemini-1.5-pro for more factual data
-// NEW IMPORTS
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const {
     fetchWeatherByCoords,
     fetchLocalNews,
     fetchFamousPlaces,
-    fetchCityFromCoordinates // This is the old getCityFromCoordinates
+    fetchCityFromCoordinates
 } = require('../utils/apiCallers');
+const logger = require('../utils/logger');
 
 
 // Main handler for ComprehensiveLocationAgent
 async function handleComprehensiveLocationInfo(senderWaId, messageContent = null, latitude = null, longitude = null) {
-    console.log(`[ComprehensiveLocationAgent] Handling request from ${senderWaId}. Lat: ${latitude}, Lon: ${longitude}, Message: "${messageContent}"`);
+    logger.info(`[ComprehensiveLocationAgent] Handling request from ${senderWaId}. Lat: ${latitude}, Lon: ${longitude}, Message: "${messageContent}"`);
 
     let locationCity = null;
     let initialMessage = '';
@@ -28,7 +28,7 @@ async function handleComprehensiveLocationInfo(senderWaId, messageContent = null
             return;
         }
         initialMessage = `Gathering information for ${locationCity}...`;
-        console.log(`Detected city from coordinates: ${locationCity}`);
+        logger.debug(`Detected city from coordinates: ${locationCity}`);
     } else {
         // If triggered by text without coordinates, prompt for location
         initialMessage = "To give you a comprehensive summary of everything happening, I need your location. Please share your live location via WhatsApp, or tell me a specific city!";
@@ -63,7 +63,7 @@ async function handleComprehensiveLocationInfo(senderWaId, messageContent = null
         placesSummary = places;
 
     } catch (error) {
-        console.error("Error fetching concurrent data for comprehensive location info:", error);
+        logger.error("Error fetching concurrent data for comprehensive location info:", error);
     }
 
     // --- Conditional Content for Summary Prompt ---
@@ -126,7 +126,7 @@ async function handleComprehensiveLocationInfo(senderWaId, messageContent = null
         const finalResponse = result.response.text();
         await sendTextMessage(senderWaId, finalResponse);
     } catch (error) {
-        console.error("Error synthesizing response with Gemini:", error);
+        logger.error("Error synthesizing response with Gemini:", error);
         await sendTextMessage(senderWaId, "I fetched some information, but I'm having trouble summarizing it right now. Please try again shortly.");
     }
 }

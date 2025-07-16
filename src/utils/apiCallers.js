@@ -2,7 +2,7 @@
 const axios = require('axios');
 
 // Load environment variables here as well, as this module will use them
-require('dotenv').config();
+// dotenv loaded only in index.js
 
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 const NEWS_API_KEY = process.env.NEWS_API_KEY;

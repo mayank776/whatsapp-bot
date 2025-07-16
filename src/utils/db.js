@@ -1,7 +1,8 @@
 // db.js
-require('dotenv').config();
+// dotenv loaded only in index.js
 const { Pool } = require('pg');
-const { v4: uuidv4 } = require('uuid'); 
+const { v4: uuidv4 } = require('uuid');
+const logger = require('./logger');
 
 // --- FIX FOR SSL CONNECTION ERROR ---
 // This new logic automatically detects if the connection is to a local database
@@ -22,7 +23,7 @@ const isLocalConnection = connectionString && (
 
 // Allow override via PGSSLMODE=disable in .env
 const disableSSL = process.env.PGSSLMODE === 'disable' || isLocalConnection;
-console.log('SSL disabled:', disableSSL, '| PGSSLMODE:', process.env.PGSSLMODE, '| isLocalConnection:', isLocalConnection);
+logger.info('SSL disabled: %s | PGSSLMODE: %s | isLocalConnection: %s', disableSSL, process.env.PGSSLMODE, isLocalConnection);
 
 const pool = new Pool({
     connectionString: connectionString,
@@ -37,9 +38,25 @@ async function query(text, params) {
     try {
         const res = await client.query(text, params);
         const duration = Date.now() - start;
-        // Optional: comment out verbose logging in production
-        console.log('[DB] Executed query', { text: text.substring(0, 100).replace(/\s+/g, ' '), duration, rows: res.rowCount });
+        logger.debug('[DB] Executed query', { text: text.substring(0, 100).replace(/\s+/g, ' '), duration, rows: res.rowCount });
         return res;
+    } finally {
+        client.release();
+    }
+}
+
+// Transaction helper for multi-step DB operations
+async function withTransaction(callback) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await callback(client);
+        await client.query('COMMIT');
+        return result;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        logger.error('[DB] Transaction rolled back due to error:', err);
+        throw err;
     } finally {
         client.release();
     }
@@ -138,6 +155,7 @@ async function initializeDbSchema() {
 module.exports = {
     query,
     pool,
+    withTransaction,
     initializeDbSchema,
     addReminder,
     getRemindersByUserId,

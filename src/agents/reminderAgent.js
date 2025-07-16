@@ -1,9 +1,9 @@
-// agents/reminderAgent.js
+const logger = require('../utils/logger');
 const chrono = require('chrono-node');
 const { v4: uuidv4 } = require('uuid');
 const moment = require('moment-timezone');
 const { sendTextMessage , sendButtonMessage , sendListMessage } = require('../utils/whatsappApi');
-const { addReminder, getRemindersByUserId, updateReminderStatus, deleteReminder } = require('../utils/db');
+const { addReminder, getRemindersByUserId, updateReminderStatus, deleteReminder, withTransaction } = require('../utils/db');
 const { scheduleReminder, cancelReminderJob } = require('../utils/scheduler');
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -13,7 +13,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const DEFAULT_TIMEZONE = process.env.DEFAULT_REMINDER_TIMEZONE || 'UTC';
 
 async function handleReminder(senderWaId, messageContent) {
-    console.log(`[ReminderAgent] Handling request from ${senderWaId}: "${messageContent}"`);
+    logger.info(`[ReminderAgent] Handling request from ${senderWaId}: "${messageContent}"`);
 
 
     if (messageContent.startsWith('DELETE_REMINDER_')) {
@@ -84,7 +84,7 @@ async function handleReminder(senderWaId, messageContent) {
             }
 
         } catch (geminiError) {
-            console.error("Error using Gemini for reminder text extraction:", geminiError);
+            logger.error("Error using Gemini for reminder text extraction:", geminiError);
             // Fallback to raw text if Gemini fails
             reminderCrux = rawReminderText;
         }
@@ -111,38 +111,28 @@ async function handleReminder(senderWaId, messageContent) {
             status: 'pending' // Initial status
         };
 
-        // Save to DB first, and handle errors
+        // Save to DB and schedule in a transaction
         try {
-            // Ensure addReminder is awaited, even if lowdb is synchronous, for future-proofing
-            await addReminder(reminder);
-        } catch (dbErr) {
-            console.error(`[ReminderAgent] Failed to save reminder to DB:`, dbErr);
-            await sendTextMessage(senderWaId, `Sorry, I couldn't save your reminder due to a database error. Please try again later.`);
-            return;
-        }
-
-        // Try to schedule the reminder, and update status if scheduling fails
-        try {
-            // scheduleReminder is async, so await it directly
-            await scheduleReminder(reminder, DEFAULT_TIMEZONE, scheduledMoment);
-            const confirmationTimeFormatted = scheduledMoment.format('h:mm A z'); // e.g., "4:47 PM IST"
+            await withTransaction(async (client) => {
+                // Save reminder
+                await addReminder(reminder);
+                // Schedule reminder (external, but if it throws, transaction rolls back)
+                await scheduleReminder(reminder, DEFAULT_TIMEZONE, scheduledMoment);
+            });
+            const confirmationTimeFormatted = scheduledMoment.format('h:mm A z');
             const bodyText = `📌 I’ve scheduled the following tasks for you:\n\n • ${reminder.message} at ${confirmationTimeFormatted}\n\nIf you’d like to make changes or remove a task, just tap below or ask anytime.`;
-
             const buttons = [
-                { id: 'MANAGE_REMINDERS_BTN', title: 'Delete Task' } // This button will open the list
+                { id: 'MANAGE_REMINDERS_BTN', title: 'Delete Task' }
             ];
-
             await sendButtonMessage(senderWaId, bodyText, buttons);
         } catch (err) {
-            // If scheduling fails, update status in DB and inform user
             try {
-                // Ensure updateReminderStatus is awaited
                 await updateReminderStatus(reminder.id, 'failed_to_schedule');
             } catch (updateErr) {
-                console.error(`[ReminderAgent] Failed to update reminder status after scheduling error:`, updateErr);
+                logger.error(`[ReminderAgent] Failed to update reminder status after scheduling error:`, updateErr);
             }
             await sendTextMessage(senderWaId, `Sorry, I couldn't schedule your reminder due to an internal error. Please try again later.`);
-            console.error(`[ReminderAgent] Failed to schedule reminder:`, err);
+            logger.error(`[ReminderAgent] Failed to schedule reminder:`, err);
         }
 
     } else {

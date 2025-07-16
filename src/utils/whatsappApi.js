@@ -1,15 +1,10 @@
-// whatsappApi.js
-const axios = require('axios'); // npm install axios
-
-// Load environment variables for the access token and phone number ID
-require('dotenv').config();
-
-const WHATSAPP_API_URL = 'https://graph.facebook.com/v19.0'; // Or the latest version
-const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN; // Get this from Meta App Dashboard
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID; // Get this from Meta App Dashboard
-
+const axios = require('axios');
+const logger = require('./logger');
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v19.0';
+const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-    console.error("WARNING: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not found in environment variables. Messaging functionality will be limited.");
+    logger.warn("WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not found in environment variables. Messaging functionality will be limited.");
 }
 
 /**
@@ -19,7 +14,7 @@ if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
  */
 async function sendTextMessage(recipientWaId, messageText) {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-        console.error("Cannot send message: WhatsApp API credentials missing.");
+        logger.error("Cannot send message: WhatsApp API credentials missing.");
         return;
     }
 
@@ -39,11 +34,10 @@ async function sendTextMessage(recipientWaId, messageText) {
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`Message sent to ${recipientWaId}:`, response.data);
+        logger.info(`Message sent to ${recipientWaId}:`, response.data);
         return response.data;
     } catch (error) {
-        console.error(`Error sending message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
-        // You might want to implement retry logic or alert mechanisms here
+        logger.error(`Error sending message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
     }
 }
 
@@ -58,7 +52,7 @@ async function sendTextMessage(recipientWaId, messageText) {
  */
 async function sendTemplateMessage(recipientWaId, templateName, components = []) {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-        console.error("Cannot send template message: WhatsApp API credentials missing.");
+        logger.error("Cannot send template message: WhatsApp API credentials missing.");
         return;
     }
 
@@ -83,11 +77,10 @@ async function sendTemplateMessage(recipientWaId, templateName, components = [])
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`Template message '${templateName}' sent to ${recipientWaId}:`, response.data);
+        logger.info(`Template message '${templateName}' sent to ${recipientWaId}:`, response.data);
         return response.data;
     } catch (error) {
-        console.error(`Error sending template message '${templateName}' to ${recipientWaId}:`, error.response ? error.response.data : error.message);
-        // Implement error handling for template messages (e.g., template not found, invalid parameters)
+        logger.error(`Error sending template message '${templateName}' to ${recipientWaId}:`, error.response ? error.response.data : error.message);
     }
 }
 
@@ -99,11 +92,11 @@ async function sendTemplateMessage(recipientWaId, templateName, components = [])
  */
 async function sendButtonMessage(recipientWaId, bodyText, buttons) {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-        console.error("Cannot send button message: WhatsApp API credentials missing.");
+        logger.error("Cannot send button message: WhatsApp API credentials missing.");
         return;
     }
     if (!Array.isArray(buttons) || buttons.length === 0 || buttons.length > 3) {
-        console.error("sendButtonMessage: 'buttons' must be an array with 1 to 3 objects.");
+        logger.error("sendButtonMessage: 'buttons' must be an array with 1 to 3 objects.");
         return;
     }
 
@@ -134,10 +127,10 @@ async function sendButtonMessage(recipientWaId, bodyText, buttons) {
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`Button message sent to ${recipientWaId}:`, response.data);
+        logger.info(`Button message sent to ${recipientWaId}:`, response.data);
         return response.data;
     } catch (error) {
-        console.error(`Error sending button message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
+        logger.error(`Error sending button message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
     }
 }
 
@@ -152,11 +145,11 @@ async function sendButtonMessage(recipientWaId, bodyText, buttons) {
  */
 async function sendListMessage(recipientWaId, headerText, bodyText, buttonText, sections) {
     if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-        console.error("Cannot send list message: WhatsApp API credentials missing.");
+        logger.error("Cannot send list message: WhatsApp API credentials missing.");
         return;
     }
     if (!Array.isArray(sections) || sections.length === 0) {
-        console.error("sendListMessage: 'sections' must be a non-empty array.");
+        logger.error("sendListMessage: 'sections' must be a non-empty array.");
         return;
     }
 
@@ -183,10 +176,10 @@ async function sendListMessage(recipientWaId, headerText, bodyText, buttonText, 
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`List message sent to ${recipientWaId}:`, response.data);
+        logger.info(`List message sent to ${recipientWaId}:`, response.data);
         return response.data;
     } catch (error) {
-        console.error(`Error sending list message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
+        logger.error(`Error sending list message to ${recipientWaId}:`, error.response ? error.response.data : error.message);
     }
 }
 
